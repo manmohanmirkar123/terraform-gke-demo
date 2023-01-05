@@ -3,11 +3,12 @@ module "gke" {
   project_id                 = var.gcp_project_id
   name                       = var.gke_cluster_name
   region                     = var.region
-  zones                      = ["us-central1-a", "us-central1-b", "us-central1-f"]
-  network                    = "vpc-01"
-  subnetwork                 = "us-central1-01"
-  ip_range_pods              = "us-central1-01-gke-01-pods"
-  ip_range_services          = "us-central1-01-gke-01-services"
+  zones                      = var.zones
+  regional                   = var.regional
+  network                    = var.network
+  subnetwork                 = var.subnetwork
+  ip_range_pods              = ""
+  ip_range_services          = ""
   http_load_balancing        = false
   network_policy             = false
   horizontal_pod_autoscaling = true
@@ -15,11 +16,11 @@ module "gke" {
 
   node_pools = [
     {
-      name                      = "default-node-pool"
+      name                      = var.nodepool
       machine_type              = "e2-medium"
-      node_locations            = "us-central1-b,us-central1-c"
+      #node_locations            = "us-central1-b,us-central1-c"
       min_count                 = 1
-      max_count                 = 100
+      max_count                 = 5
       local_ssd_count           = 0
       spot                      = false
       disk_size_gb              = 100
@@ -29,9 +30,9 @@ module "gke" {
       enable_gvnic              = false
       auto_repair               = true
       auto_upgrade              = true
-      service_account           = "project-service-account@<PROJECT ID>.iam.gserviceaccount.com"
-      preemptible               = false
-      initial_node_count        = 80
+      service_account           = var.service_account_name
+      preemptible               = true
+      initial_node_count        = 1
     },
   ]
 
@@ -46,7 +47,7 @@ module "gke" {
     all = {}
 
     default-node-pool = {
-      default-node-pool = true
+      default-node-pool = false
     }
   }
 
@@ -76,5 +77,17 @@ module "gke" {
     default-node-pool = [
       "default-node-pool",
     ]
+  }
+}
+
+resource "helm_release" "apache-airflow" {
+  name       = "apache-airflow"
+
+  repository = "https://airflow.apache.org"
+  chart      = "airflow"
+
+  set {
+    name  = "service.type"
+    value = "ClusterIP"
   }
 }
